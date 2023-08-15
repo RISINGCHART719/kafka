@@ -84,7 +84,7 @@ public class SynchronizationTest {
             protected DelegatingClassLoader newDelegatingClassLoader(List<String> paths) {
                 return AccessController.doPrivileged(
                     (PrivilegedAction<DelegatingClassLoader>) () ->
-                        new SynchronizedDelegatingClassLoader(paths)
+                            new SynchronizedDelegatingClassLoader(paths, dclBreakpoint, pclBreakpoint)
                 );
             }
         };
@@ -167,24 +167,33 @@ public class SynchronizationTest {
         }
     }
 
-    private class SynchronizedDelegatingClassLoader extends DelegatingClassLoader {
-        {
+    private static class SynchronizedDelegatingClassLoader extends DelegatingClassLoader {
+        static {
             ClassLoader.registerAsParallelCapable();
         }
 
-        public SynchronizedDelegatingClassLoader(List<String> pluginPaths) {
+        private final Breakpoint<String> dclBreakpoint;
+        private final Breakpoint<String> pclBreakpoint;
+
+        public SynchronizedDelegatingClassLoader(
+                List<String> pluginPaths,
+                Breakpoint<String> dclBreakpoint,
+                Breakpoint<String> pclBreakpoint
+        ) {
             super(pluginPaths);
+            this.dclBreakpoint = dclBreakpoint;
+            this.pclBreakpoint = pclBreakpoint;
         }
 
         @Override
         protected PluginClassLoader newPluginClassLoader(
-            URL pluginLocation,
-            URL[] urls,
-            ClassLoader parent
+                URL pluginLocation,
+                URL[] urls,
+                ClassLoader parent
         ) {
             return AccessController.doPrivileged(
-                (PrivilegedAction<PluginClassLoader>) () ->
-                    new SynchronizedPluginClassLoader(pluginLocation, urls, parent)
+                    (PrivilegedAction<PluginClassLoader>) () ->
+                            new SynchronizedPluginClassLoader(pluginLocation, urls, parent, pclBreakpoint)
             );
         }
 
@@ -196,14 +205,19 @@ public class SynchronizationTest {
         }
     }
 
-    private class SynchronizedPluginClassLoader extends PluginClassLoader {
-        {
+    private static class SynchronizedPluginClassLoader extends PluginClassLoader {
+        static {
             ClassLoader.registerAsParallelCapable();
         }
 
+        private final Breakpoint<String> pclBreakpoint;
 
-        public SynchronizedPluginClassLoader(URL pluginLocation, URL[] urls, ClassLoader parent) {
+
+        public SynchronizedPluginClassLoader(
+                URL pluginLocation, URL[] urls, ClassLoader parent, Breakpoint<String> pclBreakpoint
+        ) {
             super(pluginLocation, urls, parent);
+            this.pclBreakpoint = pclBreakpoint;
         }
 
         @Override
