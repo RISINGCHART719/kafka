@@ -46,7 +46,7 @@ public class SourceAndTarget {
 
     @Override
     public boolean equals(Object other) {
-        return other != null && toString().equals(other.toString());
+        return other instanceof SourceAndTarget && toString().equals(other.toString());
     }
 }
 
