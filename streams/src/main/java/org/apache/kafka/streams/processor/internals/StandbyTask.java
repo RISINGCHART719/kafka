@@ -40,7 +40,7 @@ import java.util.Set;
 public class StandbyTask extends AbstractTask implements Task {
     private final Sensor closeTaskSensor;
     private final boolean eosEnabled;
-    private final InternalProcessorContext processorContext;
+    private final InternalProcessorContext<?, ?> processorContext;
     private final StreamsMetricsImpl streamsMetrics;
 
     /**
@@ -60,7 +60,7 @@ public class StandbyTask extends AbstractTask implements Task {
                 final ProcessorStateManager stateMgr,
                 final StateDirectory stateDirectory,
                 final ThreadCache cache,
-                final InternalProcessorContext processorContext) {
+                final InternalProcessorContext<?, ?> processorContext) {
         super(
             id,
             topology,
@@ -302,7 +302,8 @@ public class StandbyTask extends AbstractTask implements Task {
         throw new IllegalStateException("Attempted to add records to task " + id() + " for invalid input partition " + partition);
     }
 
-    InternalProcessorContext processorContext() {
+
+    InternalProcessorContext<?, ?> processorContext() {
         return processorContext;
     }
 

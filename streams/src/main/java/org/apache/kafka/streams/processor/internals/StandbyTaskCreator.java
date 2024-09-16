@@ -88,7 +88,7 @@ class StandbyTaskCreator {
                     partitions
                 );
 
-                final InternalProcessorContext context = new ProcessorContextImpl(
+                final InternalProcessorContext<?, ?> context = new ProcessorContextImpl(
                     taskId,
                     config,
                     stateManager,
@@ -130,7 +130,8 @@ class StandbyTaskCreator {
                                   final Set<TopicPartition> inputPartitions,
                                   final ProcessorTopology topology,
                                   final ProcessorStateManager stateManager,
-                                  final InternalProcessorContext context) {
+                                  final InternalProcessorContext<?, ?> context) {
+
         final StandbyTask task = new StandbyTask(
             taskId,
             inputPartitions,
