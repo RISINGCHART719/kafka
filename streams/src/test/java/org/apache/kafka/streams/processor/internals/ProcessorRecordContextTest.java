@@ -110,4 +110,27 @@ public class ProcessorRecordContextTest {
 
         assertEquals(MIN_SIZE + 10L, context.residentMemorySizeEstimate());
     }
+
+    @SuppressWarnings("deprecation")
+    @Test
+    public void shouldThrowUnsupportedOperationOnHashCode() {
+        final ProcessorRecordContext context = new ProcessorRecordContext(
+            42L,
+            73L,
+            0,
+            "topic",
+            new RecordHeaders()
+        );
+
+        final UnsupportedOperationException exception = assertThrows(
+            UnsupportedOperationException.class,
+            () -> context.hashCode()
+        );
+
+        assertEquals(
+            "ProcessorRecordContext is unsafe for use in Hash collections "
+                + "due to the mutable Headers field",
+            exception.getMessage()
+        );
+    }
 }
