@@ -273,4 +273,58 @@ public class MirrorSourceConnectorTest {
         connector.refreshTopicPartitions();
         verify(connector, times(1)).computeAndCreateTopicPartitions();
     }
+
+    @Test
+    public void testRefreshTopicPartitionsAfterSourceChanges() throws Exception {
+        ConnectorContext context = mock(ConnectorContext.class);
+
+        MirrorSourceConnector connector = new MirrorSourceConnector(
+                new SourceAndTarget("source", "target"),
+                new DefaultReplicationPolicy(),
+                new DefaultTopicFilter(),
+                new DefaultConfigPropertyFilter());
+
+        connector.initialize(context);
+        connector = spy(connector);
+
+        doNothing().when(connector).computeAndCreateTopicPartitions();
+
+        TopicPartition partition0 = new TopicPartition("topic", 0);
+        TopicPartition partition1 = new TopicPartition("topic", 1);
+
+        doReturn(Collections.singletonList(partition0))
+                .when(connector).findSourceTopicPartitions();
+        doReturn(Collections.singletonList(new TopicPartition("source.topic", 0)))
+                .when(connector).findTargetTopicPartitions();
+
+        // First discovery
+        connector.refreshTopicPartitions();
+        verify(context, times(1)).requestTaskReconfiguration();
+
+        // Add a source partition
+        doReturn(Arrays.asList(partition0, partition1))
+                .when(connector).findSourceTopicPartitions();
+        doReturn(Arrays.asList(
+                new TopicPartition("source.topic", 0),
+                new TopicPartition("source.topic", 1)))
+                .when(connector).findTargetTopicPartitions();
+
+        connector.refreshTopicPartitions();
+        verify(context, times(2)).requestTaskReconfiguration();
+
+        // Remove a source partition
+        doReturn(Collections.singletonList(partition1))
+                .when(connector).findSourceTopicPartitions();
+        doReturn(Collections.singletonList(new TopicPartition("source.topic", 1)))
+                .when(connector).findTargetTopicPartitions();
+
+        connector.refreshTopicPartitions();
+        verify(context, times(3)).requestTaskReconfiguration();
+
+        // No changes: no additional reconfiguration
+        connector.refreshTopicPartitions();
+        verify(context, times(3)).requestTaskReconfiguration();
+        verify(connector, times(3)).computeAndCreateTopicPartitions();
+    }
+
 }
