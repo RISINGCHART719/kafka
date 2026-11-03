@@ -21,6 +21,7 @@ import org.apache.kafka.test.TestUtils;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.Timeout;
 import org.junit.jupiter.api.function.Executable;
+import org.junit.jupiter.api.io.TempDir;
 import org.mockito.stubbing.OngoingStubbing;
 
 import java.io.Closeable;
@@ -33,6 +34,7 @@ import java.nio.ByteBuffer;
 import java.nio.channels.FileChannel;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
+import java.nio.file.Path;
 import java.nio.file.StandardOpenOption;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
@@ -901,5 +903,31 @@ public class UtilsTest {
         }
         assertTrue(Utils.isEqualConstantTime(first, second));
         assertTrue(Utils.isEqualConstantTime(second, first));
+    }
+
+
+    @Test
+    void testAtomicMoveWithFallbackSuccess(@TempDir Path tempDir) throws IOException {
+        Path source = tempDir.resolve("source.txt");
+        Path target = tempDir.resolve("target.txt");
+
+        Files.write(source, "test-content".getBytes());
+
+        Utils.atomicMoveWithFallback(source, target, false);
+
+        assertFalse(Files.exists(source));
+        assertTrue(Files.exists(target));
+        assertEquals("test-content", new String(Files.readAllBytes(target)));
+    }
+
+    @Test
+    void testAtomicMoveWithFallbackMissingSource(@TempDir Path tempDir) {
+        Path source = tempDir.resolve("missing-source.txt");
+        Path target = tempDir.resolve("target.txt");
+
+        assertThrows(IOException.class,
+                () -> Utils.atomicMoveWithFallback(source, target, false));
+
+        assertFalse(Files.exists(target));
     }
 }
