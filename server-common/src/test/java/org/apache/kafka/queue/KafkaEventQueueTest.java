@@ -221,9 +221,9 @@ public class KafkaEventQueueTest {
     }
 
     @Test
-    public void testRejectedExecutionExecption() throws Exception {
+    public void testRejectedExecutionException() throws Exception {
         KafkaEventQueue queue = new KafkaEventQueue(Time.SYSTEM, new LogContext(),
-            "testRejectedExecutionExecption");
+            "testRejectedExecutionException");
         queue.close();
         CompletableFuture<Void> future = new CompletableFuture<>();
         queue.append(new EventQueue.Event() {
