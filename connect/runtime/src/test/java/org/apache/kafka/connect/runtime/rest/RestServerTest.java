@@ -385,6 +385,28 @@ public class RestServerTest {
         checkCustomizedHttpResponseHeaders(headerConfig, expectedHeaders);
     }
 
+    @Test
+    public void testServerStopGracefully() throws IOException {
+        Map<String, String> configMap = new HashMap<>(baseWorkerProps());
+        DistributedConfig workerConfig = new DistributedConfig(configMap);
+
+        EasyMock.expect(herder.kafkaClusterId()).andReturn(KAFKA_CLUSTER_ID);
+        EasyMock.expect(herder.plugins()).andStubReturn(plugins);
+        EasyMock.expect(plugins.newPlugins(Collections.emptyList(),
+                workerConfig,
+                ConnectRestExtension.class))
+                .andStubReturn(Collections.emptyList());
+        PowerMock.replayAll();
+
+        server = new RestServer(workerConfig);
+        server.initializeServer();
+        server.initializeResources(herder);
+        server.stop();
+        server = null;
+
+        PowerMock.verifyAll();
+    }
+
     private void checkCustomizedHttpResponseHeaders(String headerConfig, Map<String, String> expectedHeaders)
             throws IOException  {
         Map<String, String> workerProps = baseWorkerProps();
