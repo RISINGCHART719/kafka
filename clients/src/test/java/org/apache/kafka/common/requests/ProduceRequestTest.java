@@ -29,6 +29,7 @@ import org.apache.kafka.common.record.RecordVersion;
 import org.apache.kafka.common.record.SimpleRecord;
 import org.apache.kafka.common.record.TimestampType;
 import org.junit.jupiter.api.Test;
+import org.apache.kafka.common.TopicPartition;
 
 import java.nio.ByteBuffer;
 import java.util.Arrays;
@@ -311,4 +312,25 @@ public class ProduceRequestTest {
                 .setAcks((short) -1)
                 .setTimeoutMs(10)).build();
     }
+
+    @Test
+    public void testProduceRequestValidationAndPartitionSizes() {
+        String topic = "test-topic";
+        int partition = 0;
+        TopicPartition tp = new TopicPartition(topic, partition);
+
+        ProduceRequestData data = new ProduceRequestData()
+                .setAcks((short) 1)
+                .setTimeoutMs(5000)
+                .setTransactionalId("test-txn-id");
+
+        ProduceRequest request = new ProduceRequest(data, (short) 3);
+        
+        assertEquals((short) 1, request.acks());
+        assertEquals(5000, request.timeout());
+        assertEquals("test-txn-id", request.transactionalId());
+        request.clearPartitionRecords();
+        assertThrows(IllegalStateException.class, () -> request.data());
+    }
+
 }
