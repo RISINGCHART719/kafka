@@ -18,6 +18,10 @@ package org.apache.kafka.common.utils;
 
 import org.apache.kafka.common.config.ConfigException;
 import org.apache.kafka.test.TestUtils;
+import org.apache.log4j.AppenderSkeleton;
+import org.apache.log4j.Level;
+import org.apache.log4j.Logger;
+import org.apache.log4j.spi.LoggingEvent;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.Timeout;
 import org.junit.jupiter.api.function.Executable;
@@ -29,10 +33,13 @@ import java.io.DataOutputStream;
 import java.io.EOFException;
 import java.io.File;
 import java.io.IOException;
+import java.net.URI;
 import java.nio.BufferUnderflowException;
 import java.nio.ByteBuffer;
 import java.nio.channels.FileChannel;
 import java.nio.charset.StandardCharsets;
+import java.nio.file.FileSystem;
+import java.nio.file.FileSystems;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardOpenOption;
@@ -41,9 +48,11 @@ import java.time.format.DateTimeFormatter;
 import java.time.format.DateTimeFormatterBuilder;
 import java.time.temporal.ChronoField;
 import java.time.temporal.ChronoUnit;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashSet;
+import java.util.List;
 import java.util.Map;
 import java.util.Properties;
 import java.util.Random;
@@ -929,5 +938,68 @@ public class UtilsTest {
                 () -> Utils.atomicMoveWithFallback(source, target, false));
 
         assertFalse(Files.exists(target));
+    }
+
+    @Test
+    void testAtomicMoveWithFallbackWarnLogging(@TempDir Path tempDir) {
+        Path source = tempDir.resolve("missing-source.txt");
+        Path target = tempDir.resolve("target.txt");
+
+        Logger logger = Logger.getLogger(Utils.class);
+        Level originalLevel = logger.getLevel();
+        logger.setLevel(Level.WARN);
+
+        List<LoggingEvent> events = new ArrayList<>();
+
+        AppenderSkeleton appender = new AppenderSkeleton() {
+            @Override
+            protected void append(LoggingEvent event) {
+                events.add(event);
+            }
+
+            @Override
+            public void close() {
+            }
+
+            @Override
+            public boolean requiresLayout() {
+                return false;
+            }
+        };
+
+        logger.addAppender(appender);
+        try {
+            assertThrows(IOException.class,
+                    () -> Utils.atomicMoveWithFallback(source, target, false));
+
+            assertTrue(events.stream().anyMatch(event ->
+                    event.getLevel().equals(Level.WARN)
+                            && event.getRenderedMessage().contains("Failed atomic move")
+                            && event.getThrowableInformation() != null));
+        } finally {
+            logger.removeAppender(appender);
+            appender.close();
+            logger.setLevel(originalLevel);
+        }
+    }
+
+    @Test
+    void testAtomicMoveWithFallbackNonAtomicSuccess(@TempDir Path tempDir) throws IOException {
+        Path source = tempDir.resolve("source.txt");
+        Files.write(source, "test-content".getBytes(StandardCharsets.UTF_8));
+
+        Path zipPath = tempDir.resolve("target.zip");
+        URI zipUri = URI.create("jar:" + zipPath.toUri());
+        Map<String, String> env = Collections.singletonMap("create", "true");
+
+        try (FileSystem zipFs = FileSystems.newFileSystem(zipUri, env)) {
+            Path target = zipFs.getPath("/moved.txt");
+            Utils.atomicMoveWithFallback(source, target, false);
+
+            assertFalse(Files.exists(source));
+            assertTrue(Files.exists(target));
+            assertEquals("test-content",
+                    new String(Files.readAllBytes(target), StandardCharsets.UTF_8));
+        }
     }
 }

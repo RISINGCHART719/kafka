@@ -93,6 +93,9 @@
             files="MessageTest.java|OffsetFetchRequest.java"/>
 
     <!-- Clients tests -->
+    <suppress checks="ImportControl"
+              files="UtilsTest.java"/>
+
     <suppress checks="ClassDataAbstractionCoupling"
               files="(Sender|Fetcher|KafkaConsumer|Metrics|RequestResponse|TransactionManager|KafkaAdminClient|Message|KafkaProducer)Test.java"/>
 
