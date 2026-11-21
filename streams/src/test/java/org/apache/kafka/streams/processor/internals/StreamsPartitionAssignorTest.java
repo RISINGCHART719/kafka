@@ -17,7 +17,6 @@
 package org.apache.kafka.streams.processor.internals;
 
 import java.time.Duration;
-import java.util.Properties;
 import org.apache.kafka.clients.admin.Admin;
 import org.apache.kafka.clients.admin.AdminClient;
 import org.apache.kafka.clients.admin.ListOffsetsResult;
@@ -86,6 +85,7 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Properties;
 import java.util.Set;
 import java.util.SortedSet;
 import java.util.UUID;
@@ -139,6 +139,17 @@ import static org.junit.Assert.fail;
 @RunWith(value = Parameterized.class)
 @SuppressWarnings("deprecation")
 public class StreamsPartitionAssignorTest {
+    private static final String RACK_0 = "rack0";
+    private static final String RACK_1 = "rack1";
+    private static final String RACK_2 = "rack2";
+
+    private static final Node NODE_0 = new Node(0, "node0", 1, RACK_0);
+    private static final Node NODE_1 = new Node(1, "node1", 1, RACK_1);
+    private static final Node NODE_2 = new Node(2, "node2", 1, RACK_2);
+
+    private static final Node[] REPLICA_0 = new Node[] {NODE_0, NODE_1};
+    private static final Node[] REPLICA_1 = new Node[] {NODE_1, NODE_2};
+    private static final Node[] REPLICA_2 = new Node[] {NODE_0, NODE_2};
     private static final String CONSUMER_1 = "consumer1";
     private static final String CONSUMER_2 = "consumer2";
     private static final String CONSUMER_3 = "consumer3";
@@ -682,25 +693,19 @@ public class StreamsPartitionAssignorTest {
                           new Subscription(
                               topics,
                               getInfo(UUID_1, mkSet(TASK_0_0, TASK_0_2), emptySet()).encode(),
-                              asList(t1p0, t1p2),
-                              DEFAULT_GENERATION,
-                              Optional.of(RACK_2)
+                              asList(t1p0, t1p2)
                           ));
         subscriptions.put("consumer11",
                           new Subscription(
                               topics,
                               getInfo(UUID_1, mkSet(TASK_0_1, TASK_0_3), emptySet()).encode(),
-                              asList(t1p1, t1p3),
-                              DEFAULT_GENERATION,
-                              Optional.of(RACK_2)
+                              asList(t1p1, t1p3)
                           ));
         subscriptions.put("consumer20",
                           new Subscription(
                               topics,
                               getInfo(UUID_2, emptySet(), emptySet()).encode(),
-                              emptyList(),
-                              DEFAULT_GENERATION,
-                              Optional.of(RACK_2)
+                              emptyList()
                           ));
 
         final Map<String, Assignment> assignments = partitionAssignor.assign(localMetadata, new GroupSubscription(subscriptions)).groupAssignment();

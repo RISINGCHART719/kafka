@@ -592,7 +592,7 @@ public class StreamsPartitionAssignor implements ConsumerPartitionAssignor, Conf
                  clientStates.size(),
                  clientStates.values().stream().map(ClientState::capacity).reduce(Integer::sum),
                  clientStates.entrySet().stream()
-                     .sorted(comparingByKey())
+                     .sorted(Map.Entry.comparingByKey())
                      .map(entry -> entry.getKey() + ": " + entry.getValue().consumers())
                      .collect(Collectors.joining(Utils.NL)));
 
@@ -621,7 +621,7 @@ public class StreamsPartitionAssignor implements ConsumerPartitionAssignor, Conf
                  clientStates.size());
         log.info("Assignment of tasks to nodes: {}",
                  clientStates.entrySet().stream()
-                     .sorted(comparingByKey())
+                     .sorted(Map.Entry.comparingByKey())
                      .map(entry -> entry.getKey() + "=" + entry.getValue().currentAssignment())
                      .collect(Collectors.joining(Utils.NL)));
         return probingRebalanceNeeded;
