@@ -720,6 +720,65 @@ public class StreamsPartitionAssignorTest {
     }
 
     @Test
+    public void shouldRetainPreviouslyOwnedStatefulTemporaryStandbyTask() {
+        org.junit.Assume.assumeTrue(taskAssignor == StickyTaskAssignor.class);
+        builder.addSource(null, "source1", null, null, null, "topic1");
+        builder.addProcessor("processor", new MockApiProcessorSupplier<>(), "source1");
+        builder.addStateStore(new MockKeyValueStoreBuilder("store1", false), "processor");
+
+        final List<PartitionInfo> localInfos = asList(
+                new PartitionInfo("topic1", 0, NODE_0, REPLICA_0, REPLICA_0),
+                new PartitionInfo("topic1", 1, NODE_1, REPLICA_1, REPLICA_1),
+                new PartitionInfo("topic1", 2, NODE_2, REPLICA_2, REPLICA_2),
+                new PartitionInfo("topic1", 3, NODE_0, REPLICA_1, REPLICA_2)
+        );
+
+        final Cluster localMetadata = new Cluster(
+                "cluster",
+                asList(NODE_0, NODE_1, NODE_2),
+                localInfos,
+                emptySet(),
+                emptySet()
+        );
+
+        final List<String> topics = singletonList("topic1");
+        createMockTaskManager(mkSet(TASK_0_0, TASK_0_1, TASK_0_2, TASK_0_3), emptySet());
+        adminClient = createMockAdminClientForAssignor(getTopicPartitionOffsetsMap(
+                singletonList(APPLICATION_ID + "-store1-changelog"),
+                singletonList(4))
+        );
+        configureDefaultPartitionAssignor();
+
+        subscriptions.put("consumer10",
+                new Subscription(
+                        topics,
+                        getInfo(UUID_1, mkSet(TASK_0_0, TASK_0_2), emptySet()).encode(),
+                        asList(t1p0, t1p2)
+                ));
+        subscriptions.put("consumer11",
+                new Subscription(
+                        topics,
+                        getInfo(UUID_1, mkSet(TASK_0_1, TASK_0_3), emptySet()).encode(),
+                        asList(t1p1, t1p3)
+                ));
+        subscriptions.put("consumer20",
+                new Subscription(
+                        topics,
+                        getInfo(UUID_2, emptySet(), mkSet(TASK_0_0)).encode(),
+                        emptyList()
+                ));
+
+        final Map<String, Assignment> assignments = partitionAssignor.assign(localMetadata, new GroupSubscription(subscriptions)).groupAssignment();
+
+        // consumer20 previously owned TASK_0_0 as a standby task.
+        // While another consumer still owns the active partition, consumer20
+        // should retain the standby task without receiving an active assignment.
+        final AssignmentInfo info20 = AssignmentInfo.decode(assignments.get("consumer20").userData());
+        assertTrue(info20.activeTasks().isEmpty());
+        assertTrue(info20.standbyTasks().containsKey(TASK_0_0));
+    }
+
+    @Test
     public void testAssignEmptyMetadata() {
         builder.addSource(null, "source1", null, null, null, "topic1");
         builder.addSource(null, "source2", null, null, null, "topic2");
